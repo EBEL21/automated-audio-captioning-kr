@@ -15,7 +15,7 @@ from processes.method import _decode_outputs, _load_indices_file, evaluate_metri
 
 
 def greedy_decode(model, src, max_len, start_symbol_ind=0):
-    ys = torch.ones(batch_size, 1).fill_(0).long().to(device)  # ys_0: (batch_size,T_pred=1)
+    ys = torch.ones(src.size()[0], 1).fill_(0).long().to(device)  # ys_0: (batch_size,T_pred=1)
     encoded = model.encode(x)
     for i in range(30 - 1):
         # ys_i:(batch_size, T_pred=i+1)
