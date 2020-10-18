@@ -253,6 +253,8 @@ def _do_evaluation(model: Module,
         logger_main.info(f'{metric:<7s}: {values["score"]:7.4f}')
 
 
+
+
 def _do_training(model: Module,
                  settings_training:  MutableMapping[
                      str, Union[Any, MutableMapping[str, Any]]],
