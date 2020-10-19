@@ -3,7 +3,7 @@ from pathlib import Path
 
 import torch
 from torch import Tensor, cuda, load as pt_load
-from loguru import logger
+import torch.nn.functional as F
 
 from processes import method, dataset
 from typing import List, Dict
@@ -12,6 +12,7 @@ from tools.file_io import load_yaml_file
 from tools.printing import init_loggers
 from tools.argument_parsing import get_argument_parser
 from processes.method import _decode_outputs, _load_indices_file, evaluate_metrics
+from tools.beam import Beam
 
 
 def greedy_decode(model, src, max_len, start_symbol_ind=0):
@@ -26,6 +27,42 @@ def greedy_decode(model, src, max_len, start_symbol_ind=0):
         next_word = next_word.unsqueeze(1)
         ys = torch.cat([ys, next_word], dim=1)
     return ys
+
+
+def beam_search(model, src, max_len=30, start_symbol_ind=0, end_symbol_ind=9, beam_size=1):
+    device = src.device
+    batch_size = src.size()[0]
+    memory = model.encoder(src)
+    ys = torch.ones(src.size()[0], 1).fill_(0).long().to(device)
+
+    first_time = True
+
+    beam = [Beam(beam_size, device, start_symbol_ind, end_symbol_ind)
+            for _ in range(batch_size)]
+
+    for i in range(max_len):
+        if all((b.done() for b in beam)):
+            break
+        ys = torch.cat([b.get_current_state() for b in beam], dim=0).to(device).requires_grad_(False)
+
+        # get input mask
+        target_mask = model.generate_square_subsequent_mask(ys.size()[1]).to(device)
+        out = model.decode(memory, ys, target_mask=target_mask)  # (T_out, batch_size, ntoken) for first time,
+        # (T_out, batch_size*beam_size, ntoken) in other times
+        out = F.log_softmax(out[-1, :], dim=-1)  # (batch_size, ntoken) for first time,
+        # (batch_size*beam_size, ntoken) in other times
+
+        beam_batch = 1 if first_time else beam_size
+        for j, b in enumerate(beam):
+            b.advance(out[j * beam_batch:(j + 1) * beam_batch, :], first_time)  # update each beam
+
+        if first_time:
+            first_time = False  # reset the flag
+            # after the first run, the beam expands, so the memory needs to expands too.
+            memory = memory.repeat_interleave(beam_size, dim=1)
+
+        output = [b.get_output() for b in beam]
+        return output
 
 
 if __name__ == "__main__":
@@ -90,7 +127,7 @@ if __name__ == "__main__":
             device = next(model.parameters()).device
             x, y, f_names_tmp = [i.to(device) if isinstance(i, Tensor)
                                  else i for i in example]
-            y_hat = greedy_decode(model, x, 30)
+            y_hat = beam_search(model, x, 30, beam_size=3)
             # f_names.extend(f_names_tmp)
             y = y[:, 1:]
             try:
