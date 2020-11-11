@@ -9,21 +9,25 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 import torch.nn as nn
 import torch.nn.functional as F
+from tools.ASL_loss import AsymmetricLossOptimized
 
 class_num = 355
+batch_size = 16
+last_epoch = 0
+
 device = torch.device('cuda')
 model = Tag(class_num).to(device)
 data_dir = Path(r'./data/data_splits')
 train_data = tag_loader(data_dir, split='development',
-                        batch_size=16, class_num=class_num)
+                        batch_size=batch_size, class_num=class_num)
 eval_data = tag_loader(data_dir, split='evaluation',
-                       batch_size=16, class_num=class_num)
+                       batch_size=batch_size, class_num=class_num)
 
 learning_rate = 1e-3
 optimizer = Adam(model.parameters(), lr=learning_rate,
                  betas=(0.9, 0.999), eps=1e-08, weight_decay=0., amsgrad=True)
-scheduler = ExponentialLR(optimizer, 0.98)
-tag_loss = nn.BCELoss()
+scheduler = ExponentialLR(optimizer, gamma=0.98)
+tag_loss = AsymmetricLossOptimized(gamma_neg=4, gamma_pos=1)
 
 
 def tag_train(epoch):
@@ -60,15 +64,14 @@ def tag_eval(epoch):
 if __name__ == "__main__":
     isTrain = True
     loadModel = False
-    epoch_last = 0
 
     if loadModel:
-        model.load_state_dict(torch.load(Path('./outputs/models/TagModel_{}.pt').format(str(40))))
+        model.load_state_dict(torch.load(Path('./outputs/models/TagModel_4.pt')))
 
     if isTrain:
-        for epoch in range(epoch_last + 1, epoch_last + 5):
+        for epoch in range(last_epoch + 1, last_epoch + 21):
             tag_train(epoch)
             scheduler.step(epoch)
             tag_eval(epoch)
             if epoch % 5 == 0:
-                torch.save(model.state_dict(), Path('./outputs/models/TagModel_{}.pt'.format(epoch)))
+                torch.save(model.state_dict(), './outputs/models/TagModel_{}.pt'.format(epoch))

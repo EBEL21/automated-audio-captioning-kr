@@ -26,10 +26,12 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', 500)
     pd.set_option('display.width', 1000)
 
-    pred_file = Path('tmp/814280_2020-10-11_16-33-01_818781_pred.json')
-    ref_file = Path('tmp/814280_2020-10-11_16-33-01_818781_ref.json')
-    score_file = Path('tmp/814280_2020-10-11_16-33-01_818781_score.json')
-    result_file = Path('tmp/814280_2020-10-11_16-33-01_818781_result.csv')
+    pred_file = Path('tmp/601967_2020-11-05_20-22-29_756491_pred.json')
+    ref_file = Path('tmp/601967_2020-11-05_20-22-29_756491_ref.json')
+    score_file = Path('tmp/601967_2020-11-05_20-22-29_756491_score.json')
+    result_file = Path('tmp/601967_2020-11-05_20-22-29_756491_result.csv')
+
+    create_score_json(pred_file, ref_file, score_file)
 
     pred = pd.read_json(pred_file, encoding="UTF-8")
     pred.rename(columns={"caption": "caption_pred"}, inplace=True)
@@ -41,6 +43,6 @@ if __name__ == '__main__':
     m1 = pd.merge(pred, ref, on='audio_id')
     m1 = pd.merge(m1, score, on='audio_id')
     m1.drop(columns=["id"], inplace=True)
-    df = m1.set_index(['audio_id', 'caption_pred', 'caption_ref'])
-    df.to_csv(result_file)
-    print(df[:10])
+    # df = m1.set_index(['audio_id', 'caption_pred', 'caption_ref'])
+    m1.to_csv(result_file)
+    print(m1[:10])

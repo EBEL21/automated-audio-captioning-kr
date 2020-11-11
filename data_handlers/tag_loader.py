@@ -31,6 +31,12 @@ class TagDataset(Dataset):
         tag = self.tags[item]
         return features, tag
 
+def one_hot_encoding(tag, batch_size, class_num=355):
+    one_hot_labels = torch.zeros(size=(batch_size, class_num), dtype=torch.float)
+    for i, label in enumerate(tag):
+        label = label.type(torch.LongTensor)
+        one_hot_labels[i] = one_hot_labels[i].scatter_(dim=0, index=label, value=1.)
+    return one_hot_labels
 
 def tag_collate_fn(batch):
 
@@ -40,13 +46,12 @@ def tag_collate_fn(batch):
     eos_token = batch[0][1][-1]
 
     input_tensor = cat([
-        cat([zeros(
-            max_input_t_steps - i[0].shape[0],
-            input_features).float(),
-             from_numpy(i[0]).float()]).unsqueeze(0) for i in batch])
+        cat([from_numpy(i[0]).float(),
+             zeros(max_input_t_steps - i[0].shape[0], input_features).float()
+             ]).unsqueeze(0) for i in batch])
 
-    output_tensor = cat([torch.Tensor(i[1]) for i in batch])
-
+    output_tensor = [torch.Tensor(i[1]) for i in batch]
+    output_tensor = one_hot_encoding(output_tensor, len(output_tensor))
     return input_tensor, output_tensor
 
 

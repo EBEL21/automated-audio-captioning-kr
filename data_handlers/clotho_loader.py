@@ -1,22 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from typing import MutableSequence, MutableMapping, Union,\
-    Tuple, List
+from typing import MutableSequence, MutableMapping, Union, \
+    Tuple, List, Callable, Optional
+from functools import partial
 from pathlib import Path
 
 from torch.utils.data import DataLoader
-from torch import cat, zeros, from_numpy, ones, Tensor
+from torch import cat, zeros, from_numpy, ones, Tensor, LongTensor
 from numpy import ndarray
 
 from data_handlers._clotho import ClothoDataset
+from tools.SpecAugment import spec_augment
 
 __author__ = 'Konstantinos Drossos -- Tampere University'
 __docformat__ = 'reStructuredText'
 __all__ = ['get_clotho_loader']
 
 
-def _clotho_collate_fn(batch: MutableSequence[ndarray]) \
+def _clotho_collate_fn(batch: MutableSequence[ndarray], augment: bool) \
         -> Tuple[Tensor, Tensor, List[str]]:
     """Pads data.
 
@@ -42,32 +44,42 @@ def _clotho_collate_fn(batch: MutableSequence[ndarray]) \
 
     input_features = batch[0][0].shape[-1]
     eos_token = batch[0][1][-1]
+    PAD = 4367
 
     input_tensor = cat([
-        cat([zeros(
-            max_input_t_steps - i[0].shape[0],
-            input_features).float(),
-             from_numpy(i[0]).float()]).unsqueeze(0) for i in batch])
+        cat([from_numpy(i[0]).float(),
+             zeros(max_input_t_steps - i[0].shape[0], input_features).float()
+             ]).unsqueeze(0) for i in batch])
+
+    if augment:
+        input_tensor = spec_augment(input_tensor)
 
     output_tensor = cat([
         cat([
             from_numpy(i[1]).long(),
-            ones(max_output_t_steps - len(i[1])).mul(eos_token).long()
+            ones(max_output_t_steps - len(i[1])).mul(PAD).long()
         ]).unsqueeze(0) for i in batch])
+    *_, output_len = zip(*batch)
+    output_len = LongTensor(output_len)
 
-    return input_tensor, output_tensor, file_names
+    return input_tensor, output_tensor, output_len, file_names
 
 
 def get_clotho_loader(split: str,
                       is_training: bool,
-                      settings_data: MutableMapping[
-                          str, Union[str, bool, MutableMapping[str, str]]],
-                      settings_io: MutableMapping[
-                          str, Union[str, bool, MutableMapping[
-                              str, Union[str, MutableMapping[str, str]]]]]) \
+                      data_dir: str,
+                      input_field_name: str,
+                      output_field_name: str,
+                      batch_size: int,
+                      num_workers: Optional[int] = 1,
+                      load_into_memory: bool= True,
+                      shuffle: Optional[bool] = True,
+                      drop_last: Optional[bool] = True,
+                      augment: Optional[bool] = False) \
         -> DataLoader:
     """Gets the data loader.
 
+    :param augment:
     :param split: Split to be used.
     :type split: str
     :param is_training: Is training data?
@@ -79,26 +91,28 @@ def get_clotho_loader(split: str,
     :return: Data loader.
     :rtype: torch.utils.data.DataLoader
     """
-    data_dir = Path(
-        settings_io['root_dirs']['data'],
-        settings_io['dataset']['features_dirs']['output'])
 
     dataset = ClothoDataset(
         data_dir=data_dir,
         split=split,
-        input_field_name=settings_data['input_field_name'],
-        output_field_name=settings_data['output_field_name'],
-        load_into_memory=settings_data['load_into_memory'])
+        input_field_name=input_field_name,
+        output_field_name=output_field_name,
+        load_into_memory=load_into_memory)
 
-    shuffle = settings_data['shuffle'] if is_training else False
-    drop_last = settings_data['drop_last'] if is_training else False
+    shuffle = shuffle if is_training else False
+    drop_last = drop_last if is_training else False
+
+    collate_fn: Callable = partial(
+        _clotho_collate_fn,
+        augment=augment
+    )
 
     return DataLoader(
         dataset=dataset,
-        batch_size=settings_data['batch_size'],
+        batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=settings_data['num_workers'],
+        num_workers=num_workers,
         drop_last=drop_last,
-        collate_fn=_clotho_collate_fn)
+        collate_fn=collate_fn)
 
 # EOF
