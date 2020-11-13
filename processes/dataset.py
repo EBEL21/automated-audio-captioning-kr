@@ -17,7 +17,7 @@ from tools.dataset_creation import get_annotations_files, \
     create_split_data, create_lists_and_frequencies
 from tools.file_io import load_settings_file, load_yaml_file, \
     load_pickle_file, load_numpy_object, dump_numpy_object, load_audio_file
-from tools.features_log_mel_bands import feature_extraction
+from tools.features_log_mel_bands import feature_extraction, feature_extraction_l3
 
 __author__ = 'Konstantinos Drossos -- Tampere University'
 __docformat__ = 'reStructuredText'
@@ -177,18 +177,27 @@ def extract_features(root_dir: str,
     dir_output_dev.mkdir(parents=True, exist_ok=True)
     dir_output_eva.mkdir(parents=True, exist_ok=True)
 
+    dir_openl3_dev = Path('data/openl3/development')
+    dir_openl3_eval = Path('data/openl3/evaluation')
+    openl3_path = sorted(dir_openl3_dev.iterdir()) + sorted(dir_openl3_eval.iterdir())
     # Apply the function to each file and save the result.
+    idx = 0
     for data_file_name in filter(
             lambda _x: _x.suffix == '.npy',
-            chain(dir_dev.iterdir(), dir_eva.iterdir())):
+            chain(sorted(dir_dev.iterdir()), sorted(dir_eva.iterdir()))):
 
         # Load the data file.
         data_file = load_numpy_object(data_file_name)
 
         # Extract the features.
-        features = feature_extraction(
-            data_file['audio_data'].item(),
-            **settings_features['process'])
+        if idx % 5 == 0:
+            features = np.load(str(openl3_path[idx//5]))['embedding']
+            print(openl3_path[idx//5])
+            print(data_file['file_name'].item())
+        idx += 1
+        # features = feature_extraction(
+        #     data_file['audio_data'].item(),
+        #     **settings_features['process'])
 
         # Populate the recarray data and dtypes.
         array_data = (data_file['file_name'].item(),)

@@ -37,7 +37,8 @@ def _clotho_collate_fn(batch: MutableSequence[ndarray], augment: bool) \
              and second the output.
     :rtype: torch.Tensor, torch.Tensor, list[str]
     """
-    max_input_t_steps = max([i[0].shape[0] for i in batch])
+
+    max_input_t_steps = 220  # max([i[0].shape[0] for i in batch])
     max_output_t_steps = max([i[1].shape[0] for i in batch])
 
     file_names = [i[2] for i in batch]
@@ -46,10 +47,16 @@ def _clotho_collate_fn(batch: MutableSequence[ndarray], augment: bool) \
     eos_token = batch[0][1][-1]
     PAD = 4367
 
-    input_tensor = cat([
-        cat([from_numpy(i[0]).float(),
-             zeros(max_input_t_steps - i[0].shape[0], input_features).float()
-             ]).unsqueeze(0) for i in batch])
+    input_tensor = []
+    for i in range(len(batch)):
+        if batch[i][0].shape[0] > max_input_t_steps:
+            t = from_numpy(batch[i][0][:max_input_t_steps]).unsqueeze(0)
+        else:
+            t = cat([from_numpy(batch[i][0]).float(),
+                     zeros(max_input_t_steps - batch[i][0].shape[0], input_features).float()
+                     ]).unsqueeze(0)
+        input_tensor.append(t)
+    input_tensor = cat(input_tensor)
 
     if augment:
         input_tensor = spec_augment(input_tensor)
@@ -72,7 +79,7 @@ def get_clotho_loader(split: str,
                       output_field_name: str,
                       batch_size: int,
                       num_workers: Optional[int] = 1,
-                      load_into_memory: bool= True,
+                      load_into_memory: bool = True,
                       shuffle: Optional[bool] = True,
                       drop_last: Optional[bool] = True,
                       augment: Optional[bool] = False) \

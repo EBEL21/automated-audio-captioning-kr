@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.nn.modules.transformer import TransformerDecoder,TransformerDecoderLayer
 
 # from hparams import hparams as hp
-from encoder_cnn import Cnn10, init_layer
+from modules.encoder_cnn import Cnn10, init_layer
 
 
 class PositionalEncoding(nn.Module):
@@ -29,7 +29,7 @@ class PositionalEncoding(nn.Module):
 
 class TransformerModel(nn.Module):
 
-    def __init__(self, ntoken, ninp, nhead, nhid, nlayers, batch_size, dropout=0.5,pretrain_cnn=None,
+    def __init__(self, ntoken, ninp, nhead, nhid, nlayers, batch_size, dropout=0.5, pretrain_cnn=None,
                  pretrain_emb=None,freeze_cnn=True):
         super(TransformerModel, self).__init__()
 
@@ -64,6 +64,19 @@ class TransformerModel(nn.Module):
         if pretrain_emb is not None:
             self.word_emb.weight.data = pretrain_emb
 
+
+
+    def load_encoder(self, pretrain_cnn, pretrain_emb):
+
+        self.word_emb.weight.data = pretrain_emb
+        dict_trained = pretrain_cnn
+        dict_new = self.encoder.state_dict().copy()
+        new_list = list(self.encoder.state_dict().keys())
+        trained_list = list(dict_trained.keys())
+        for i in range(len(new_list)):
+            dict_new[new_list[i]] = dict_trained[trained_list[i]]
+        self.encoder.load_state_dict(dict_new)
+
     def freeze_cnn(self):
         for p in self.encoder.parameters():
             p.requires_grad = False
@@ -87,7 +100,7 @@ class TransformerModel(nn.Module):
         x = x.permute(2, 0, 1)  # (T/16,batch_size,512)
         x = F.relu_(self.fc(x))
         x = F.dropout(x, p=0.2, training=self.training)
-        x = torch.relu(self.fc1(x))
+        x = F.relu_(self.fc1(x))
         return x
 
     def decode(self, mem, tgt, input_mask=None, target_mask=None, target_padding_mask=None):

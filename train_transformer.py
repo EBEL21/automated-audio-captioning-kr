@@ -185,7 +185,7 @@ if __name__ == "__main__":
 
     pretrain_emb = align_word_embedding(r'data/pickles/words_list.p', r'outputs/models/w2v_192.mod', param.ntoken,
                                         param.nhid)
-    pretrain_cnn = torch.load(Path('outputs/models/TagModel_5.pt'), map_location='cuda')
+    pretrain_cnn = torch.load(Path('outputs/models/TagModel_20.pt'), map_location='cuda')
 
     model = TransformerModel(
         param.ntoken, param.ninp, param.nhead, param.nhid, param.nlayers, param.batch_size, dropout=0.2,
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     )
 
     if param.load_model:
-        model.load_state_dict(pt_load('outputs/models/epoch_040_transformer_model.pt', map_location=device))
+        model.load_state_dict(pt_load('outputs/models/epoch_042_fine_tuning_model.pt', map_location=device))
     # model.load_encoder(pretrain_cnn, pretrain_emb)
     model.to(device)
 
@@ -210,7 +210,7 @@ if __name__ == "__main__":
             train()
             if epoch % 3 == 0:
                 evaluation()
-            torch.save(model.state_dict(), './outputs/models/epoch_{:03d}_fine_tuning_model.pt'.format(epoch))
+            torch.save(model.state_dict(), './outputs/models/epoch_{:03d}_transformer_model.pt'.format(epoch))
             epoch += 1
     else:
         evaluation()

@@ -1,4 +1,6 @@
 import torch
+import torch.nn.functional as F
+
 
 class Beam:
     """
@@ -90,3 +92,40 @@ class Beam:
     def sort_beam(self, beam):
         # sort the beam according to the score
         return sorted(beam, key=lambda x: x[1], reverse=True)
+
+
+def beam_search(model, src, max_len=30, start_symbol_ind=0, end_symbol_ind=9, beam_size=1):
+    device = src.device
+    batch_size = src.size()[0]
+    memory = model.encode(src)
+    # ys = torch.ones(src.size()[0], 1).fill_(0).long().to(device)
+
+    first_time = True
+
+    beam = [Beam(beam_size, device, start_symbol_ind, end_symbol_ind)
+            for _ in range(batch_size)]
+
+    for i in range(max_len):
+        if all((b.done() for b in beam)):
+            break
+
+        ys = torch.cat([b.get_current_state() for b in beam], dim=0).to(device).requires_grad_(False)
+
+        # get input mask
+        target_mask = model.generate_square_subsequent_mask(ys.size()[1]).to(device)
+        out = model.decode(memory, ys, target_mask=target_mask)  # (T_out, batch_size, ntoken) for first time,
+        # (T_out, batch_size*beam_size, ntoken) in other times
+        out = F.log_softmax(out[-1, :], dim=-1)  # (batch_size, ntoken) for first time,
+        # (batch_size*beam_size, ntoken) in other times
+
+        beam_batch = 1 if first_time else beam_size
+        for j, b in enumerate(beam):
+            b.advance(out[j * beam_batch:(j + 1) * beam_batch, :], first_time)  # update each beam
+
+        if first_time:
+            first_time = False  # reset the flag
+            # after the first run, the beam expands, so the memory needs to expands too.
+            memory = memory.repeat_interleave(beam_size, dim=1)
+
+    output = [b.get_output().cpu() for b in beam]
+    return output

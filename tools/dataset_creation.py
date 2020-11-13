@@ -322,8 +322,7 @@ def create_split_data(csv_split: MutableSequence[MutableMapping[str, str]],
                     ('audio_data', np.dtype(object)),
                     ('caption', f'U{len(caption)}'),
                     ('caption_ind', 'i4'),
-                    ('words_ind', np.dtype
-                    (object)),
+                    ('words_ind', np.dtype(object)),
                     ('chars_ind', np.dtype(object))
                 ]))
 

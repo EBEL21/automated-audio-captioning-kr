@@ -3,11 +3,18 @@
 
 import numpy as np
 from librosa.feature import melspectrogram
+import openl3
+import soundfile as sf
 
 __author__ = 'Konstantinos Drossos -- Tampere University'
 __docformat__ = 'reStructuredText'
 __all__ = ['feature_extraction']
 
+def feature_extraction_l3(file_name):
+    audio, sr = sf.read(file_name)
+    emb, ts = openl3.get_audio_embedding(audio, sr, content_type='env',
+                                         embedding_size=512)
+    return emb
 
 def feature_extraction(audio_data: np.ndarray,
                        sr: int,

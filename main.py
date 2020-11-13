@@ -36,9 +36,9 @@ def main():
         logger_main.info('Starting creation of dataset')
 
         logger_inner.info('Creating examples')
-        dataset.create_dataset(
-            settings_dataset=settings['dataset_creation_settings'],
-            settings_dirs_and_files=settings['dirs_and_files'])
+        # dataset.create_dataset(
+        #     settings_dataset=settings['dataset_creation_settings'],
+        #     settings_dirs_and_files=settings['dirs_and_files'])
         logger_inner.info('Examples created')
 
         logger_inner.info('Extracting features')

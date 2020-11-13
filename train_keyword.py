@@ -13,7 +13,7 @@ from tools.ASL_loss import AsymmetricLossOptimized
 
 class_num = 355
 batch_size = 16
-last_epoch = 0
+last_epoch = 20
 
 device = torch.device('cuda')
 model = Tag(class_num).to(device)
@@ -27,7 +27,8 @@ learning_rate = 1e-3
 optimizer = Adam(model.parameters(), lr=learning_rate,
                  betas=(0.9, 0.999), eps=1e-08, weight_decay=0., amsgrad=True)
 scheduler = ExponentialLR(optimizer, gamma=0.98)
-tag_loss = AsymmetricLossOptimized(gamma_neg=4, gamma_pos=1)
+tag_loss = nn.BCELoss()
+# tag_loss = AsymmetricLossOptimized(gamma_neg=4, gamma_pos=1)
 
 
 def tag_train(epoch):
@@ -63,10 +64,10 @@ def tag_eval(epoch):
 
 if __name__ == "__main__":
     isTrain = True
-    loadModel = False
+    loadModel = True
 
     if loadModel:
-        model.load_state_dict(torch.load(Path('./outputs/models/TagModel_4.pt')))
+        model.load_state_dict(torch.load(Path('./outputs/models/TagModel_20.pt')))
 
     if isTrain:
         for epoch in range(last_epoch + 1, last_epoch + 21):

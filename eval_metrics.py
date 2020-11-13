@@ -109,7 +109,7 @@ def evaluate_metrics_from_files(pred_file: Union[Path, str],
     # Create evaluation object and evaluate metrics
     cocoEval = COCOEvalCap(coco, cocoRes)
     cocoEval.params['audio_id'] = cocoRes.getAudioIds()
-    cocoEval.evaluate()
+    cocoEval.evaluate(verbose=False)
 
     # Make dict from metrics
     metrics = dict(
@@ -165,8 +165,8 @@ def evaluate_metrics_from_lists(predictions: List[str],
     metrics, per_file_metrics = evaluate_metrics_from_files(pred_file, ref_file)
 
     # Delete temporary files
-    ref_file.unlink()
-    pred_file.unlink()
+    # ref_file.unlink()
+    # pred_file.unlink()
 
     return metrics, per_file_metrics
 

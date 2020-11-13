@@ -70,7 +70,7 @@ class Cnn10(nn.Module):
     def __init__(self):
         super(Cnn10, self).__init__()
 
-        self.bn0 = nn.BatchNorm2d(64)
+        self.bn0 = nn.BatchNorm2d(512)
 
         self.conv_block1 = ConvBlock(in_channels=1, out_channels=64)
         self.conv_block2 = ConvBlock(in_channels=64, out_channels=128)
